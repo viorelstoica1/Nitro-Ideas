@@ -108,7 +108,7 @@ class TFT(object) :
        aDC is the DC pin and aReset is the reset pin."""
     self._size = ScreenSize
     self._offset = bytearray([0,0])
-    self._offset[1] = 24	#Decomenteaza pentru graphic test
+    #self._offset[1] = 24	#Decomenteaza pentru graphic test
     #self._offset[0] = 24	#Decomenteaza pentru poza
     self.rotate = 0                    #Vertical with top toward pins.
     self._rgb = True                   #color order of rgb.
@@ -121,7 +121,15 @@ class TFT(object) :
     self.spi = spi
     self.colorData = bytearray(2)
     self.windowLocData = bytearray(4)
-
+    
+  def setGraphic(self):
+      self._offset[1] = 24
+      self._offset[0] = 0
+  
+  def setPicture(self):
+      self._offset[1] = 0
+      self._offset[0] = 24
+      
   def size( self ) :
     return self._size
 

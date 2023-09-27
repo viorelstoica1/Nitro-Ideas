@@ -6,9 +6,11 @@ import math
 spi = SPI(0, baudrate=20000000, polarity=0, phase=0,
           sck=Pin(2), mosi=Pin(3), miso=None)
 tft=TFT(spi,1,0,4)
+tft.setGraphic()
 tft.initr()
 tft.rgb(True)
 tft.rotation(1)
+
 
 def testlines(color):
     tft.fill(TFT.BLACK)
