@@ -4,8 +4,8 @@ import time
 SOUND_SPEED=340 # Vitesse du son dans l'air
 TRIG_PULSE_DURATION_US=10
 
-trig_pin = Pin(21, Pin.OUT) # Broche GP15 de la Pico
-echo_pin = Pin(22, Pin.IN)  # Broche GP14 de la Pico
+trig_pin = Pin(10, Pin.OUT) # Broche GP15 de la Pico
+echo_pin = Pin(9, Pin.IN)  # Broche GP14 de la Pico
 
 while True:
     # Prepare le signal
@@ -20,4 +20,4 @@ while True:
     distance_cm = SOUND_SPEED * ultrason_duration / 20000
 
     print(f"Distance : {distance_cm} cm")
-    time.sleep_ms(500)
+    time.sleep_ms(50)

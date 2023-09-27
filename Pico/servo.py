@@ -1,8 +1,8 @@
 from machine import Pin, PWM
-
+import time
 class Servo:
     def __init__(self,pin):
-        self._PinServo = Pin(21, Pin.OUT)
+        self._PinServo = Pin(pin, Pin.OUT)
         self._PWMServo = PWM(self._PinServo)
         self._PWMServo.freq(50)
         self._PWMServo.duty_u16(5000)
@@ -20,6 +20,12 @@ class Servo:
             print("Frecventa e prea mare pentru servo, max 300hZ")
         else:
             self._PWMServo.freq(newFrequency)
-        
-directie = Servo(21)
-directie.steerStraight()
+    def steer(self, directie):
+        if (directie <= 1.0) and (directie >= -1.0):
+            self._PWMServo.duty_u16(5000+(int(directie)*900))
+directie = Servo(12)
+#directie.steerStraight()
+#time.sleep(2)
+#directie.steerLeft()
+#time.sleep(2)
+#directie.steerRight()

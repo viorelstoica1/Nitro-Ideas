@@ -6,10 +6,12 @@ import urequests as requests
 import time
 import socket
 import servo
+
+from machine import Pin, PWM
 from hbridge import hb
 rp2.country('RO')
 ip = ""
-ssid = "picoW"
+ssid = "pico3W"
 pw = "123456789"
 pico_led = machine.Pin('LED', machine.Pin.OUT)
 speed_value = 0
@@ -17,6 +19,8 @@ direction = 1
 isMoving = 0
 unBrick = False
 
+sunet = PWM(Pin(11))
+sunet.freq(500)
 
 
 def connect():
@@ -41,7 +45,7 @@ def open_socket(ip):
     address = (ip,80)
     connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     connection.bind(address)
-    connection.listen(10)
+    connection.listen(1)
     print("Connected")
     return connection
 
@@ -64,18 +68,15 @@ def switch(request):
             direction = 1
             isMoving = 1
             hb.setDuty(float(speed_value * direction))
-            
         elif "GET /backward" in request:
             print("backward")
             direction = -1
             isMoving = 1
             hb.setDuty(float(speed_value * direction))
-            
         elif "GET /stop" in request:
             print("stop")
             isMoving = 0
             hb.setDuty(0)
-            
         elif "GET /speed:" in request:
             start = "/speed:"
             end = " HTTP"
@@ -87,43 +88,54 @@ def switch(request):
             else:
                 hb.setDuty(0)
                 print("Not Moving")
-            
         elif "GET /steerLeft" in request:
             print("Steering left")
             servo.directie.steerLeft()
         elif "GET /endSteeringLeft" in request:
             print("Stop steering left")
             servo.directie.steerStraight()
-            
         elif "GET /steerRight" in request:
             print("Steering right")
             servo.directie.steerRight()
         elif "GET /endSteeringRight" in request:
             print("Stop steering right")
             servo.directie.steerStraight()
-    
-def handle_request(client_socket):
+        elif "GET /hornStop" in request:
+            sunet.duty_u16(0)
+            print("liniste")
+        elif "GET /horn" in request:
+            sunet.duty_u16(40000)
+            print("claxon")
+
+
+def handle_clients(client_socket):
     global unBrick
-    while unBrick != True:
-        client = client_socket.accept()[0]
-        request = client.recv(1024)
-        print(request)
-        
-        switch(request)
-                
-        response = "HTTP/1.1 200 OK\r\n\r\nLED state changed"
-        client.send(response)
+    buf = b''
+    while not unBrick:
+        client, addr = client_socket.accept()
+        print("Accepted client", addr)
+        while unBrick != True:
+            #client, addr = client_socket.accept()
+            request = client.recv(128)
+            if request:
+                buf += request
+                request = buf.split(b"\r\n", 2)
+                buf = request[-1]
+                if len(request)>1:
+                    print(request[0])
+                    switch(request[0])
+                    if len(request[0])==0:
+                        response = "HTTP/1.1 200 OK\r\n\r\nLED state changed"
+                        client.send(response)
+            else:
+                print('Client closed the connection!')
+                break
+            #client.close()
         client.close()
     
 try:
     ip = connect()
     connection = open_socket(ip)
-    handle_request(connection)
+    handle_clients(connection)
 except KeyboardInterrupt:
     machine.reset()
-        
-        
-        
-
-    
-
