@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/shm.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <fstream>
@@ -112,8 +113,8 @@ int main()
   uint8_t *bayerFrame;
   uint32_t rgbFrame[PIXY2_RAW_FRAME_WIDTH*PIXY2_RAW_FRAME_HEIGHT];
   
-  const char *send_fifo_path = "/home/ursachi/pixy2/src/host/libpixyusb2_examples/get_raw_frame/pipe2";
-  const char *receive_fifo_path = "/home/ursachi/pixy2/src/host/libpixyusb2_examples/get_raw_frame/pipe1";  // Path to the named pipe
+  const char *send_fifo_path = "/home/nitro/pixy2/build/get_raw_frame/pipe2";
+  const char *receive_fifo_path = "/home/nitro/pixy2/build/get_raw_frame/pipe1";  // Path to the named pipe
   char buffer[256];
   
   
@@ -166,10 +167,11 @@ int main()
     shmid=shmget((key_t)1000,1000000,0666|IPC_CREAT);
 
     int i = 0;
-  	
+int divizor = 0;
+	auto start_time = std::chrono::high_resolution_clock::now();
   while(1) {
   
-  	auto start_time = std::chrono::high_resolution_clock::now();
+
   	pixy.m_link.stop();	
   
   	//usleep(1000);
@@ -178,12 +180,13 @@ int main()
 	// convert Bayer frame to RGB frame
 	demosaic(PIXY2_RAW_FRAME_WIDTH, PIXY2_RAW_FRAME_HEIGHT, bayerFrame, rgbFrame);
 	// write frame to PPM file for verification
-	Result = writePPM(PIXY2_RAW_FRAME_WIDTH, PIXY2_RAW_FRAME_HEIGHT, rgbFrame, "image");
+	//Result = writePPM(PIXY2_RAW_FRAME_WIDTH, PIXY2_RAW_FRAME_HEIGHT, rgbFrame, "image");
 	
+
 	
   
-  	if (Result==0)
-    		printf("Write frame to out.ppm\n");
+  	//if (Result==0)
+    		//printf("Write frame to out.ppm\n");
     
 	int fd = open(receive_fifo_path, O_RDONLY);
 	if (fd == -1) {
@@ -194,24 +197,42 @@ int main()
 
 	buffer[bytesRead] = '\0';
 
-	std::cout << "C++ program received message: " << buffer << std::endl;
+	//std::cout << "C++ program received message: " << buffer << std::endl;
 
 	//SHARED MEMORY STORING
-	string path = "/home/ursachi/pixy2/src/host/libpixyusb2_examples/get_raw_frame/image.ppm";
-	ifstream ppm_file(path, ios::binary);
-	cout<<path<<endl;
+	//string path = "/home/nitro/pixy2/build/get_raw_frame/image.ppm";
+	//ifstream ppm_file(path, ios::binary);
+	//cout<<path<<endl;
 
-	if (!ppm_file) {
+	/*if (!ppm_file) {
 	    cerr << "Failed to open .ppm file." << endl;
 	    return 1;
-	}
+	}*/
 
-	printf("Key of shared memory is %d\n",shmid);
+	//printf("Key of shared memory is %d\n",shmid);
 	shared_memory=shmat(shmid,NULL,0);
-	printf("Process attached at %p\n",shared_memory);
-
-	ppm_file.read(static_cast<char*>(shared_memory), 1000000);
-
+	char *writeptr = (char*)shared_memory;
+	//printf("Process attached at %p\n",shared_memory);
+	//int memorie=shm_open(shared_memory,O_RDWR,0);
+	//ppm_file.read(static_cast<char*>(shared_memory), 1000000);		//TODO elimina discul
+	  int latime, inaltime;
+		//incercare de evitare fisier
+	  //fprintf(shared_memory, "P6\n%d %d\n255\n", PIXY2_RAW_FRAME_WIDTH, PIXY2_RAW_FRAME_HEIGHT);
+	const char header_ppm[] = "P6 316 208 255 ";
+	for(int i=0;i<sizeof(header_ppm);i++){
+		//*((char*)(shared_memory)+i) = *((char*)header_ppm+i);
+		*(writeptr++) =*(header_ppm+i);
+	}
+	  for (inaltime=0; inaltime<208/*PIXY2_RAW_FRAME_HEIGHT*/; inaltime++)
+	  {
+	    for (latime=0; latime<316/*PIXY2_RAW_FRAME_WIDTH*/; latime++) {
+	      //fwrite((char *)(rgbFrame + j*PIXY2_RAW_FRAME_WIDTH + i), 1, 3, (const char*)shared_memory);
+		//brg
+		*(writeptr++)=*((char*)(rgbFrame + inaltime*316+latime) + 1);//r
+		*(writeptr++)=*((char*)(rgbFrame + inaltime*316+latime) + 2);//g
+		*(writeptr++)=*((char*)(rgbFrame + inaltime*316+latime) + 0);//b
+		}
+	  }
 
 	close(fd);
 
@@ -236,7 +257,7 @@ int main()
 	// Close the named pipe
 	close(fd);
 
-	std::cout << "C++ program has sent a message to the named pipe." << std::endl;
+	//std::cout << "C++ program has sent a message to the named pipe." << std::endl;
 
 	if(i==10)
 	    i=0;
@@ -244,12 +265,18 @@ int main()
         
         //pixy.m_link.resume();
         
-        if(pixy.line.numVectors > 0)
-        	pixy.line.vectors[0].print();
+        /*if(pixy.line.numVectors > 0)
+        	pixy.line.vectors[0].print();*/
         	
         auto end_time = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-	std::cout << "Time for iteration " << i << ": " << duration.count() << " milliseconds" << std::endl;
+start_time=end_time;
+	if(divizor++>30){
+		std::cout << i << ": " << duration.count() << " ms" << std::endl;
+		divizor=0;
+	}
+
+
 	}
   
   // Call resume() to resume the current program, otherwise Pixy will be left
